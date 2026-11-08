@@ -49,15 +49,34 @@ def test_extract_json_garbage_raises():
         llm.extract_json("no json here")
 
 
+def test_chat_json_rotates_past_unparseable_replies(monkeypatch):
+    # Regression: live incident 7113b12c34 (2026-11-07) died because the
+    # primary model answered HTTP 200 with prose. Parse failures must rotate
+    # to the next model just like transport failures.
+    replies = {"m1": "Sorry, the service looks down.", "m2": '{"tool": "read_logs"}'}
+    from agent.config import Settings
+
+    monkeypatch.setattr(
+        llm, "settings", Settings(inference_model="m1", inference_fallback_model="m2")
+    )
+    monkeypatch.setattr(llm, "chat", lambda messages, *a, **kw: replies[kw["model"]])
+    assert llm.chat_json([{"role": "user", "content": "x"}]) == {"tool": "read_logs"}
+    monkeypatch.setattr(llm, "chat", lambda messages, *a, **kw: "still prose")
+    with pytest.raises(llm.LLMError):
+        llm.chat_json([{"role": "user", "content": "x"}])
+
+
 def test_build_plan_with_stubbed_llm(monkeypatch):
     monkeypatch.setattr(
         llm,
-        "chat",
-        lambda messages, **kw: (
-            '{"diagnosis": "process is down", "steps": '
-            '[{"tool": "read_logs", "args": {}, "why": "logs show a crash"},'
-            ' {"tool": "restart_service", "args": {}, "why": "process unreachable"}]}'
-        ),
+        "chat_json",
+        lambda messages, **kw: {
+            "diagnosis": "process is down",
+            "steps": [
+                {"tool": "read_logs", "args": {}, "why": "logs show a crash"},
+                {"tool": "restart_service", "args": {}, "why": "process unreachable"},
+            ],
+        },
     )
     inc = Incident(signature=FaultSignature.PROCESS_DOWN, evidence={"health_probe": "unreachable"})
     plan = planner.build_plan(inc)

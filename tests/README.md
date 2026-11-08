@@ -52,3 +52,12 @@ Two defects were found by the drills and fixed, each with a regression test:
    `test_executor_idempotent_mutations`; drill 10 is the live proof on the
    corrected build. The failed incident stays in the production audit
    history — it is the record of why the fix exists.
+3. **Planner parse failures** (found in the second capture session,
+   incident `7113b12c34`): the primary model answered HTTP 200 with prose
+   instead of JSON; the plan died and the incident FAILED. (The fleet
+   still recovered untouched: the monitor re-detected the outage six
+   seconds later and the follow-up incident closed it — but the planner
+   itself was the weak link.) `llm.chat_json` now rotates primary →
+   fallback → primary across *parse* failures as well as transport
+   failures before giving up. Locked in
+   `test_chat_json_rotates_past_unparseable_replies`.

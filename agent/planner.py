@@ -38,7 +38,7 @@ def build_plan(incident: Incident) -> Plan:
             f"fixed before with this proven tool sequence: {recalled}. "
             "Prefer it unless the evidence contradicts it."
         )
-    raw = llm.chat(
+    data = llm.chat_json(
         [
             {"role": "system", "content": _SYSTEM.replace("__TOOLS__", tools_desc)},
             {
@@ -51,7 +51,6 @@ def build_plan(incident: Incident) -> Plan:
             },
         ]
     )
-    data = llm.extract_json(raw)
     steps = [
         PlanStep(tool=s.get("tool", ""), args=s.get("args") or {}, why=s.get("why", ""))
         for s in data.get("steps", [])
@@ -68,7 +67,7 @@ def propose_for_request(request_text: str) -> dict:
     believes would carry it out. The policy gate — not the model — decides
     whether it may run."""
     tools_desc = ", ".join(ALLOWLIST.keys())
-    raw = llm.chat(
+    return llm.chat_json(
         [
             {
                 "role": "system",
@@ -87,4 +86,3 @@ def propose_for_request(request_text: str) -> dict:
         ],
         max_tokens=300,
     )
-    return llm.extract_json(raw)
