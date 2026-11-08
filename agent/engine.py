@@ -123,7 +123,11 @@ def _run(inc: Incident) -> Incident:
         if inc.verification["passed"]:
             inc.status = IncidentStatus.CLOSED
             inc.closed_at = time.time()
-            tools_used = [r.tool for r in inc.results if r.ok and not r.refused]
+            raw_tools = [r.tool for r in inc.results if r.ok and not r.refused]
+            # A replan round may legitimately re-apply a fix (the double-break
+            # case); the stored proven fix is the effective sequence, so
+            # collapse consecutive duplicates before recording it.
+            tools_used = [t for i, t in enumerate(raw_tools) if i == 0 or t != raw_tools[i - 1]]
             if tools_used:
                 store.record_proven_fix(inc.signature.value, tools_used)
                 audit.record(

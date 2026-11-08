@@ -169,3 +169,38 @@ def test_engine_full_loop_with_fakes(monkeypatch):
     inc = engine.handle_incident(Incident())
     assert inc.status.value == "closed"
     assert engine.store.recall_fix("process_down") == ["restart_service"]
+
+
+def test_engine_replan_stores_deduped_proven_fix(monkeypatch):
+    # Round 1 verification fails, round 2 re-applies the same tool and
+    # passes. The stored proven fix must list the tool once — it is the
+    # effective sequence, not a transcript (live double-break drill,
+    # incident 600cc6d913, stored 'rollback -> rollback' before this fix).
+    monkeypatch.setattr(
+        sandbox, "gather_evidence", lambda: {"health_probe": "health HTTP 503"}
+    )
+    monkeypatch.setattr(sandbox, "classify", lambda ev: FaultSignature.BAD_DEPLOY)
+    monkeypatch.setattr(
+        planner,
+        "build_plan",
+        lambda inc: Plan(
+            diagnosis="bad deploy",
+            steps=[PlanStep(tool="rollback_deploy", why="release is broken")],
+        ),
+    )
+    monkeypatch.setattr(
+        executor,
+        "run_tool",
+        lambda tool, args=None, incident_id=None, **kw: ToolResult(tool=tool, ok=True, output="done"),
+    )
+    outcomes = iter(
+        [
+            {"passed": False, "health_checks": ["503"], "error_rate": 1.0},
+            {"passed": True, "health_checks": ["ok"], "error_rate": 0.0},
+        ]
+    )
+    monkeypatch.setattr(engine, "verify", lambda: next(outcomes))
+    monkeypatch.setattr(engine.reporter, "write_report", lambda inc: "/tmp/report.md")
+    inc = engine.handle_incident(Incident())
+    assert inc.status.value == "closed"
+    assert engine.store.recall_fix("bad_deploy") == ["rollback_deploy"]
