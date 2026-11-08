@@ -1,0 +1,19 @@
+# NightShift Ops — gitignore (scaffold, Nov 3 2026)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.log
+.pytest_cache/
+node_modules/
+dist/
+.DS_Store
+# Vultr / infra local state — never commit credentials or keys
+*.pem
+*.key
+id_rsa*
+terraform.tfstate*
+.local/

@@ -1,0 +1,22 @@
+# NightShift Ops sandbox fleet — runs ONLY inside the sandbox boundary.
+# Sprint fleet: one service, wired completely (the design's orders-api and
+# worker are the same pattern repeated; one complete loop beats three stubs).
+# Containment per the Challenge 01 brief: resource caps on the service, no
+# secrets anywhere in the sandbox, data in a named volume the lifecycle
+# drill can wipe.
+services:
+  shopfront:
+    build: ./services/shopfront
+    container_name: nightshift-shopfront
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      DATA_QUOTA_BYTES: "67108864"
+    volumes:
+      - shopdata:/data
+    mem_limit: 256m
+    cpus: 0.5
+    restart: "no"
+
+volumes:
+  shopdata:

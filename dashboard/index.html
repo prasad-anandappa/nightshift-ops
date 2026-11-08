@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NightShift Ops — Control Plane</title>
+<style>
+  :root { --bg:#0b1020; --panel:#131a30; --line:#24304f; --txt:#dbe4ff; --dim:#8fa1c7;
+          --ok:#2ecc71; --bad:#ff5c5c; --warn:#ffb347; --accent:#4da3ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--txt); }
+  header { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:20px; margin:0; }
+  header .tag { color:var(--dim); font-size:13px; }
+  .pill { padding:3px 10px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+  .pill.ok { color:var(--ok); border-color:var(--ok); }
+  .pill.bad { color:var(--bad); border-color:var(--bad); }
+  .pill.warn { color:var(--warn); border-color:var(--warn); }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:14px; padding:14px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  section h2 { font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin:0 0 10px; }
+  button { background:#1d2a4d; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  button.danger { border-color:var(--bad); color:#ffb3b3; }
+  button.kill { background:#3d1420; border-color:var(--bad); color:#ffb3b3; font-weight:700; }
+  input[type=text] { width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); background:#0d1428; color:var(--txt); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .evt { border-left:3px solid var(--line); padding:6px 10px; margin:6px 0; background:#0e1528; border-radius:0 6px 6px 0; font-size:13px; }
+  .evt .t { color:var(--dim); font-size:11px; }
+  .evt.refusal { border-left-color:var(--bad); }
+  .evt.verify { border-left-color:var(--ok); }
+  .evt.detected { border-left-color:var(--warn); }
+  .evt.plan { border-left-color:var(--accent); }
+  .evt.kill { border-left-color:var(--bad); background:#2a1016; }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; }
+  #askresult { margin-top:10px; font-size:13px; }
+  .refused-text { color:var(--bad); font-weight:600; }
+  a { color:var(--accent); }
+  .kv { font-size:13px; color:var(--dim); }
+  .kv b { color:var(--txt); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌙 NightShift Ops</h1>
+  <span class="tag">Autonomous on-call agent · Vultr Cloud Compute + Serverless Inference · Challenge 01 — Blast Radius Zero</span>
+  <span id="fleet-pill" class="pill">fleet: …</span>
+  <span id="kill-pill" class="pill ok">kill switch: off</span>
+</header>
+<main>
+  <section>
+    <h2>Sandbox fleet — shopfront</h2>
+    <div id="fleet" class="kv">loading…</div>
+    <h2 style="margin-top:16px;">Chaos panel — break the world</h2>
+    <div class="row">
+      <button onclick="chaos('bad_deploy')">🚀 Ship bad deploy</button>
+      <button onclick="chaos('kill_process')">💀 Kill process</button>
+      <button onclick="chaos('fill_disk')">💾 Fill disk</button>
+      <button onclick="chaos('reset')">♻️ Reset fleet</button>
+    </div>
+    <p class="kv">The monitor notices on its own — no human pages the agent. Watch the timeline.</p>
+  </section>
+
+  <section>
+    <h2>Ask the agent</h2>
+    <input id="askinput" type="text" placeholder='e.g. "restart the shopfront" — or try "delete the orders database"'>
+    <div class="row">
+      <button onclick="ask()">Send request</button>
+      <button class="danger" onclick="document.getElementById('askinput').value='Delete the orders database and all customer records';ask();">Try a forbidden request</button>
+    </div>
+    <div id="askresult"></div>
+    <h2 style="margin-top:16px;">Kill switch</h2>
+    <div class="row">
+      <button class="kill" onclick="killSwitch(true)">⛔ ENGAGE KILL SWITCH</button>
+      <button onclick="killSwitch(false)">Release</button>
+    </div>
+    <p class="kv">The executor checks the kill switch before <b>every</b> tool call.</p>
+  </section>
+
+  <section>
+    <h2>Agent memory — proven fixes</h2>
+    <div id="memory" class="kv">nothing learned yet</div>
+    <h2 style="margin-top:16px;">Incidents</h2>
+    <div id="incidents" class="kv">none yet</div>
+  </section>
+
+  <section style="grid-column:1/-1;">
+    <h2>Audit timeline — every plan, tool call, verification and refusal</h2>
+    <div id="audit"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function ts(t){ return new Date(t*1000).toLocaleTimeString(); }
+async function chaos(kind){
+  await fetch('/api/chaos/'+kind, {method:'POST'});
+  refresh();
+}
+async function killSwitch(on){
+  await fetch('/api/kill', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({on})});
+  refresh();
+}
+async function ask(){
+  const v = $('askinput').value.trim(); if(!v) return;
+  $('askresult').textContent = 'asking…';
+  const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({request:v})});
+  const d = await r.json();
+  $('askresult').innerHTML = d.refused
+    ? '<span class="refused-text">⛔ REFUSED:</span> ' + d.message
+    : '✅ ' + d.message;
+  refresh();
+}
+async function refresh(){
+  try {
+    const s = await (await fetch('/api/state')).json();
+    const fp = $('fleet-pill');
+    fp.textContent = 'fleet: ' + (s.fleet.healthy ? 'HEALTHY' : 'FAILING — ' + s.fleet.detail);
+    fp.className = 'pill ' + (s.fleet.healthy ? 'ok' : 'bad');
+    const kp = $('kill-pill');
+    kp.textContent = 'kill switch: ' + (s.kill_switch ? 'ENGAGED' : 'off');
+    kp.className = 'pill ' + (s.kill_switch ? 'bad' : 'ok');
+    const ss = s.service_state || {};
+    $('fleet').innerHTML =
+      'health: <b>' + s.fleet.detail + '</b><br>' +
+      'release: <b>' + (ss.version ?? 'unreachable') + '</b><br>' +
+      'data: <b>' + (ss.data_bytes ?? '—') + '</b> / quota <b>' + (ss.data_quota_bytes ?? '—') + '</b> bytes<br>' +
+      'requests: <b>' + (ss.requests ?? '—') + '</b> · errors: <b>' + (ss.errors ?? '—') + '</b>';
+    $('memory').innerHTML = s.memory.length
+      ? s.memory.map(m => '• <b>' + m.signature + '</b> → ' + JSON.parse(m.tools).join(' → ') + ' (proven ×' + m.successes + ')').join('<br>')
+      : 'nothing learned yet';
+    $('incidents').innerHTML = s.incidents.length
+      ? s.incidents.map(i =>
+          '• <b>' + i.id + '</b> ' + i.signature + ' — <b>' + i.status + '</b>' +
+          (i.status === 'closed' ? ' · <a href="/api/incidents/' + i.id + '/report" target="_blank">incident report</a>' : '')
+        ).join('<br>')
+      : 'none yet';
+    $('audit').innerHTML = s.audit.map(e =>
+      '<div class="evt ' + e.kind + '"><span class="t">' + ts(e.ts) + ' · ' + e.kind + '</span><br>' + e.message + '</div>'
+    ).join('');
+  } catch(e) { /* next tick */ }
+}
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>
