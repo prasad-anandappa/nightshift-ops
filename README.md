@@ -29,7 +29,8 @@ the loop:
    built only from the agent's allowlisted tools.
 3. **Acts** — the executor runs the plan inside the sandbox only. Every step
    passes a policy gate (allowlist check) and a kill-switch check first, and
-   mutating steps are idempotent per incident.
+   mutating steps are idempotent per incident per plan round (a retry inside
+   one round never double-applies; a later round may re-apply a fix).
 4. **Verifies** — an independent verifier probes the service directly:
    health must be green on 3 consecutive checks **and** a 10-request error
    sample must be ≤ 10 % errors. The agent never grades its own homework; a
@@ -121,15 +122,17 @@ gate still run; only the planning step needs the key.
 ### Tests
 
 ```bash
-python3 -m pytest tests/ -q     # 18 tests: policy gate, planner parsing,
+python3 -m pytest tests/ -q     # 20 tests: policy gate, planner parsing,
                                 # verifier rules, memory, executor refusals,
                                 # classification, full engine loop (faked I/O)
 ```
 
 The deployed system additionally passed live end-to-end drills on
-2026-11-07 (bad deploy ×3 with memory recall on the repeat, process kill,
+2026-11-07/08 (bad deploy with memory recall on the repeat, process kill,
 disk fill, forbidden-request refusal, kill-switch halt, restart
-persistence) — see `tests/README.md`.
+persistence, and a double-break drill — a second fault injected
+mid-verification). Three real defects were found by the drills and fixed,
+each with a regression test — see `tests/README.md`.
 
 ## Repository layout
 
