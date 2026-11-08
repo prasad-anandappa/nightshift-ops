@@ -33,9 +33,22 @@ public internet; the agent did everything else itself.
 | 8 | Control-plane restart | Incidents, audit timeline and memory rehydrated from SQLite — history survives restarts |
 | 9 | Public reachability | Dashboard + `/health` + chaos API answered from an independent host in another region; host firewall verified (ufw: 22 + 80 only) |
 
-One defect was found and fixed during the drills: fault classification
-originally compared the deploy version to the literal string `"broken"`,
-while the service reports `v1.5.0-broken` — the first incident was filed as
-`error_spike` (the planner still diagnosed and fixed it correctly from
-evidence). Classification now matches on substring; the regression is locked
-in `test_classify_signatures`, and drill 4 ran on the corrected build.
+| 10 | **Double break** — a second bad deploy shipped the instant the first incident's rollback landed, mid-verification | Round-1 verification failed (correctly); the incident reopened, the round-2 rollback **re-applied**, verification passed, incident **closed** |
+
+Two defects were found by the drills and fixed, each with a regression test:
+
+1. **Fault classification** originally compared the deploy version to the
+   literal string `"broken"`, while the service reports `v1.5.0-broken` —
+   the first incident was filed as `error_spike` (the planner still
+   diagnosed and fixed it correctly from evidence). Classification now
+   matches on substring; locked in `test_classify_signatures`; drill 4 ran
+   on the corrected build.
+2. **Idempotency scope** (found by the demo-capture session, incident
+   `c3ad1151a3`, which FAILED): the mutation guard was keyed per incident,
+   so when a second fault was injected mid-incident, the replan's rollback
+   was an "idempotent skip" no-op and the incident could not recover. The
+   guard is now scoped per plan round — same-round retries still cannot
+   double-apply, later rounds re-apply legitimately. Locked in
+   `test_executor_idempotent_mutations`; drill 10 is the live proof on the
+   corrected build. The failed incident stays in the production audit
+   history — it is the record of why the fix exists.

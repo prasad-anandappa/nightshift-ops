@@ -2,7 +2,8 @@
 
 Every call passes the policy gate first, checks the kill switch, and is
 written to the audit timeline. Mutating tools are idempotent per
-(incident, tool, args) — a retried step never double-applies.
+(incident, plan round, tool, args) — a retried step inside one round never
+double-applies, while a later round may legitimately re-apply a fix.
 """
 
 from __future__ import annotations
@@ -26,7 +27,12 @@ def kill_switch_on() -> bool:
     return kill_switch_active(settings.kill_switch_file)
 
 
-def run_tool(tool: str, args: dict | None = None, incident_id: str | None = None) -> ToolResult:
+def run_tool(
+    tool: str,
+    args: dict | None = None,
+    incident_id: str | None = None,
+    round_no: int = 1,
+) -> ToolResult:
     args = args or {}
     # 1. Policy gate — refusal is a first-class, audited outcome.
     try:
@@ -46,8 +52,11 @@ def run_tool(tool: str, args: dict | None = None, incident_id: str | None = None
         result = ToolResult(tool=tool, ok=False, output="Kill switch is engaged; execution halted.")
         audit.record("kill", f"Kill switch blocked tool '{tool}'", incident_id, tool=tool)
         return result
-    # 3. Idempotency for mutating tools.
-    key = f"{incident_id}:{tool}:{json.dumps(args, sort_keys=True)}"
+    # 3. Idempotency for mutating tools — scoped to one plan round. A retry
+    # inside the same round never double-applies; a later round (after a
+    # failed verification, when the world may have changed again) must be
+    # allowed to re-apply the fix.
+    key = f"{incident_id}:r{round_no}:{tool}:{json.dumps(args, sort_keys=True)}"
     if tool in _MUTATING and incident_id:
         with _lock:
             if key in _executed:

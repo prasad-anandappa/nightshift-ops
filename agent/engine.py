@@ -102,7 +102,7 @@ def _run(inc: Incident) -> Incident:
                 inc.status = IncidentStatus.HALTED
                 audit.record("kill", "Kill switch engaged mid-plan — halting.", inc.id)
                 break
-            result = executor.run_tool(step.tool, step.args, inc.id)
+            result = executor.run_tool(step.tool, step.args, inc.id, round_no=round_no)
             inc.results.append(result)
             # give restarts/deploys a moment to take effect
             if step.tool in ("restart_service", "rollback_deploy"):

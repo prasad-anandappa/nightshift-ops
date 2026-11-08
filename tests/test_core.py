@@ -104,10 +104,16 @@ def test_executor_idempotent_mutations(monkeypatch):
     monkeypatch.setitem(
         sandbox.TOOLS, "restart_service", lambda args: (calls.append(1), (True, "restarted"))[1]
     )
-    r1 = executor.run_tool("restart_service", {}, incident_id="inc-9")
-    r2 = executor.run_tool("restart_service", {}, incident_id="inc-9")
+    r1 = executor.run_tool("restart_service", {}, incident_id="inc-9", round_no=1)
+    r2 = executor.run_tool("restart_service", {}, incident_id="inc-9", round_no=1)
     assert r1.ok and r2.ok
-    assert len(calls) == 1  # second call was an idempotent skip
+    assert len(calls) == 1  # same-round retry was an idempotent skip
+    # A later plan round (post failed verification) MUST re-apply the fix —
+    # regression test for the live drill defect found 2026-11-07, where a
+    # second fault injected mid-incident made the round-2 rollback a no-op.
+    r3 = executor.run_tool("restart_service", {}, incident_id="inc-9", round_no=2)
+    assert r3.ok
+    assert len(calls) == 2
 
 
 # ---------------------------------------------------------------- classify
@@ -137,7 +143,7 @@ def test_engine_full_loop_with_fakes(monkeypatch):
     monkeypatch.setattr(
         executor,
         "run_tool",
-        lambda tool, args=None, incident_id=None: ToolResult(tool=tool, ok=True, output="done"),
+        lambda tool, args=None, incident_id=None, **kw: ToolResult(tool=tool, ok=True, output="done"),
     )
     monkeypatch.setattr(engine, "verify", lambda: {"passed": True, "health_checks": ["ok"], "error_rate": 0.0})
     monkeypatch.setattr(engine.reporter, "write_report", lambda inc: "/tmp/report.md")
