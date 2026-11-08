@@ -26,6 +26,8 @@ _DASHBOARD = os.path.join(os.path.dirname(__file__), "..", "dashboard", "index.h
 @app.on_event("startup")
 def _startup() -> None:
     os.makedirs(settings.reports_dir, exist_ok=True)
+    engine.hydrate()
+    audit.hydrate()
     monitor.start()
     audit.record("plan", "NightShift Ops control plane started; monitor live.")
 

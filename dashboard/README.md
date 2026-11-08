@@ -1,8 +1,20 @@
 # Dashboard UI
 
-Incident timeline · diagnosis + plan with cited evidence · live tool calls ·
-verification status · kill switch. Calm-green idle state (demo opens on it).
+`index.html` — a single self-contained page served by the control plane at
+`/`. It polls `/api/state` every 2 seconds and renders:
 
-TODO (Nov 5): static UI served by the control-plane FastAPI app, fed by the
-audit-timeline stream. TODO (Nov 6): kill-switch button wired to the agent.
-TODO (Nov 7): screenshots for the submission (calm · mid-fix · verified · refusal).
+- **Fleet status** — live health, release version, data-vs-quota, counters
+- **Chaos panel** — ship bad deploy · kill process · fill disk · reset fleet
+- **Ask the agent** — free-text requests; allowlisted ones execute,
+  everything else is refused in red, on the record (try the
+  *forbidden request* button)
+- **Kill switch** — engage/release; the executor checks it before every
+  tool call
+- **Agent memory** — fault signatures and their proven fixes, with counts
+- **Incidents** — status per incident, with a link to the full Markdown
+  incident report once closed
+- **Audit timeline** — every detection, plan, tool call, verification,
+  memory event, refusal and kill-switch action, newest first
+
+No build step, no framework, no external assets — it loads identically
+offline or in a judge's browser.

@@ -113,7 +113,7 @@ def test_executor_idempotent_mutations(monkeypatch):
 # ---------------------------------------------------------------- classify
 def test_classify_signatures():
     assert sandbox.classify({"health_probe": "health unreachable: ConnectError"}) == FaultSignature.PROCESS_DOWN
-    assert sandbox.classify({"health_probe": "health HTTP 503", "deploy_version": "broken"}) == FaultSignature.BAD_DEPLOY
+    assert sandbox.classify({"health_probe": "health HTTP 503", "deploy_version": "v1.5.0-broken"}) == FaultSignature.BAD_DEPLOY
     assert (
         sandbox.classify({"health_probe": "health HTTP 503", "data_bytes": 100, "data_quota_bytes": 10})
         == FaultSignature.DISK_PRESSURE

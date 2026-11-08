@@ -89,6 +89,30 @@ class Store:
             ).fetchone()
         return json.loads(row["tools"]) if row else None
 
+    def list_incidents(self, limit: int = 8) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT payload FROM incidents ORDER BY opened_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [json.loads(r["payload"]) for r in rows]
+
+    def list_audit(self, limit: int = 120) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT ts, incident_id, kind, message, data FROM audit ORDER BY seq DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "ts": r["ts"],
+                "incident_id": r["incident_id"],
+                "kind": r["kind"],
+                "message": r["message"],
+                "data": json.loads(r["data"] or "{}"),
+            }
+            for r in rows
+        ]
+
     def memory_snapshot(self) -> list[dict]:
         with self._lock:
             rows = self._db.execute(

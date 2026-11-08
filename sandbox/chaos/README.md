@@ -1,10 +1,16 @@
-# Chaos panel — reproducible faults, on demand (DESIGN §3, Nov 4)
+# Chaos — reproducible faults, on demand
 
-Four faults, each reversible by an allowlisted tool:
-1. Kill process        -> fixed by restart_service
-2. Fill disk           -> fixed by clear_temp_files
-3. Ship bad deploy     -> fixed by rollback_deploy
-4. Spike error rate    -> diagnosed via read_logs, fixed per plan
+Three faults, each detected by the monitor, each reversible by exactly the
+allowlisted tool a real on-call engineer would reach for:
 
-TODO (Nov 4): one script/endpoint per fault + a small operator UI.
-TODO (Nov 7): the demo uses "Ship bad deploy" as the on-camera break (DESIGN §4).
+| Fault | How it is inflicted | Signature | Fix tool |
+|---|---|---|---|
+| Ship bad deploy | `POST /__chaos/bad_deploy` on shopfront flips its release to `v1.5.0-broken` (every request 500s, health red, ERROR logs) | `bad_deploy` | `rollback_deploy` |
+| Kill process | `docker stop nightshift-shopfront` | `process_down` | `restart_service` |
+| Fill disk | 96 MB filler written to the service's data area (quota 64 MiB) → writes fail with *No space left on device* | `disk_pressure` | `clear_temp_files` |
+
+The chaos controls are operated by the human (dashboard **Chaos panel** or
+`POST /api/chaos/{bad_deploy|kill_process|fill_disk|reset}` on the control
+plane). The agent has no access to them — it only gets the seven allowlisted
+operational tools, which is precisely the asymmetry the demo exists to show.
+`reset` restores a clean fleet (start container, clear filler, roll back).

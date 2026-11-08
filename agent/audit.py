@@ -30,3 +30,12 @@ def record(kind: str, message: str, incident_id: str | None = None, **data) -> A
 def recent(limit: int = 120) -> list[dict]:
     with _lock:
         return [e.model_dump() for e in _events[-limit:]][::-1]
+
+
+def hydrate() -> None:
+    """Reload the persisted timeline after a control-plane restart."""
+    rows = store.list_audit(_MAX)
+    with _lock:
+        _events.clear()
+        for row in reversed(rows):  # oldest first
+            _events.append(AuditEvent(**row))

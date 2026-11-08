@@ -87,7 +87,7 @@ def classify(evidence: dict) -> FaultSignature:
             return FaultSignature.DISK_PRESSURE
     except (TypeError, ValueError):
         pass
-    if evidence.get("deploy_version") == "broken":
+    if "broken" in str(evidence.get("deploy_version", "")):
         return FaultSignature.BAD_DEPLOY
     if float(evidence.get("error_rate_sample", 0)) >= 0.3:
         return FaultSignature.ERROR_SPIKE

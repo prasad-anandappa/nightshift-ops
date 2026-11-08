@@ -1,14 +1,20 @@
 # Submission notes (lablab.ai dashboard — NOT Devpost)
 
-Field drafts live in ../DESIGN.md §5 — refine Nov 7, submit Nov 8.
-Live-page requirements to honour (checked Nov 3, see BUILD-EXECUTION plan):
-- Challenge: 01 Blast Radius Zero (confirm selection in the form at kickoff)
-- Public demo URL / application URL is a required submission element
-- Cover image + video presentation + slide presentation listed under
-  "Cover image and presentation" — prepare all three
-- At least one containment moment must appear in the demo video
-- Vultr integration explanation belongs in the repo README (no separate report)
-- TODO (kickoff): confirm demo-video length cap + exact track/category list
-  in the live form (public page states neither the 2-min cap nor track names)
-- TODO (kickoff): check the collaborator field behaviour for a solo team —
-  do NOT invent a collaborator (DESIGN §5)
+Final field text lives in the submission pack
+(`../../SUBMISSION-PACK.md` in the project workspace). Checklist against the
+live event requirements (verified Nov 3 + Nov 7):
+
+- ✅ Challenge: **01 · Blast Radius Zero**
+- ✅ Title / short + long description — final text in the pack
+- ✅ Technology & category tags — in the pack
+- ✅ Cover image — `assets/cover.png` in this workspace's submission folder
+- ✅ Video presentation (≤ 2:00) — contains the containment moment
+  (the `delete_database` refusal) and a memory-recall fix
+- ✅ Slide presentation (PDF + PPTX)
+- ✅ Public GitHub repo — https://github.com/prasad-anandappa/nightshift-ops (MIT)
+- ✅ Public demo / application URL — http://155.138.254.23/ (keep it alive
+  through judging — do not stop the instance)
+- ✅ Vultr usage explained in the repo README
+- Solo team — the public event page allows teams of 1–6; no collaborator is
+  invented. If the form hard-requires a collaborator field, that is a
+  founder/escalation item, flagged in the pack.

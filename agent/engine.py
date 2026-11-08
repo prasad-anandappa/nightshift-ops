@@ -30,6 +30,16 @@ def register(inc: Incident) -> None:
     store.save_incident(inc)
 
 
+def hydrate() -> None:
+    """Reload persisted incidents after a control-plane restart."""
+    for payload in store.list_incidents():
+        try:
+            inc = Incident.model_validate(payload)
+            incidents[inc.id] = inc
+        except Exception:
+            continue
+
+
 def handle_incident(inc: Incident) -> Incident:
     """Run the full loop for a fresh incident. Blocking — call in a thread."""
     global _active_id
