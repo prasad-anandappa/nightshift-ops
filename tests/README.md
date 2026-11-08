@@ -61,3 +61,13 @@ Two defects were found by the drills and fixed, each with a regression test:
    fallback → primary across *parse* failures as well as transport
    failures before giving up. Locked in
    `test_chat_json_rotates_past_unparseable_replies`.
+
+## Post-build clean-start audit (2026-11-08)
+
+After the submission assets were captured, the production deployment was
+fully restarted from scratch — `docker compose down` + `up` for the
+sandbox and a control-plane service restart. State hydrated from SQLite
+(incident history and agent memory intact), and a fresh bad deploy run
+over the public path (incident `0519d0f3a8`) closed in 16 s with
+verification passed (error rate 0.0) and the proven fix recalled from
+memory. The submission pack was filed against this build.
